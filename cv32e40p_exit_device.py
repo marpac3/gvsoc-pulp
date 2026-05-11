@@ -21,7 +21,7 @@ class Cv32e40pExitDevice(st.Component):
 
     def __init__(self, parent, name):
         super().__init__(parent, name)
-        self.set_component('devices.cv32e40p_exit.cv32e40p_exit_device')
+        self.set_component('pulp.cv32e40p_exit.cv32e40p_exit_device')
 
     def i_INPUT(self) -> st.SlaveItf:
         return st.SlaveItf(self, 'input', signature='io')
