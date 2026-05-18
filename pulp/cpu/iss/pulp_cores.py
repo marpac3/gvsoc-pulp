@@ -217,7 +217,7 @@ class cv32e40p(cpu.iss.riscv.RiscvCommon):
         # into the ISS model .so.  The base riscv.py add_sources() list
         # doesn't include it because it's CV32E40P-specific.
         self.add_sources([
-            "cpu/iss/src/csr_cv32e40p.cpp",
-            "cpu/iss/src/irq_cv32e40p.cpp",
-            "cpu/iss/src/core_cv32e40p.cpp",
+            "cpu/iss/src/cv32e40p/csr_cv32e40p.cpp",
+            "cpu/iss/src/cv32e40p/irq_cv32e40p.cpp",
+            "cpu/iss/src/cv32e40p/core_cv32e40p.cpp",
         ])
