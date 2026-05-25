@@ -16,6 +16,10 @@
 # limitations under the License.
 #
 
+#
+# Authors: Marco Paci, Fondazione Chips-it (marco.paci@chips.it)
+#
+
 import cpu.iss.riscv
 from cpu.iss.isa_gen.isa_riscv_gen import *
 from cpu.iss.isa_gen.isa_smallfloats import *
