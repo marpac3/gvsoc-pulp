@@ -179,7 +179,7 @@ class cv32e40p(cpu.iss.riscv.RiscvCommon):
         # Values derived from cv32e40p_cs_registers.sv and cv32e40p_pkg.sv.
         # mstatus writable bits: MIE[3], MPIE[7], MPP[12:11]
         # With FPU (not zfinx): add FS[14:13]
-        # D62: mstatus effective write mask — matches RTL always_ff forcing (PULP_SECURE=0).
+        # mstatus effective write mask — matches RTL always_ff forcing (PULP_SECURE=0).
         # RTL cv32e40p_cs_registers.sv:1222-1230 forces MPP=M, MPRV=0, UIE=0, UPIE=0.
         # Only MIE(3) + MPIE(7) are writable. With FPU: add FS(14:13).
         mstatus_mask = 0x6088 if fpu_in_isa else 0x0088
@@ -198,10 +198,10 @@ class cv32e40p(cpu.iss.riscv.RiscvCommon):
             'mstatus_write_mask': mstatus_mask,  # MPP/MPIE/MIE [+FS if FPU]
             'mie_write_mask': 0xFFFF0888,        # IRQ_MASK
             'mip_write_mask': 0x0,               # read-only in M-mode
-            'mtval_write_mask': 0x00000000,      # D58: CV32E40P mtval is hardwired to 0 (BUG-23)
+            'mtval_write_mask': 0x00000000,      # CV32E40P mtval is hardwired to 0
             'tdata1_reset': 0x28001040,          # type=2,dmode=1,action=1,m=1,u=0 (no U-mode)
-            'tdata1_write_mask': 0x00000000,     # D59: writable ONLY from Debug Mode (RTL: tmatch_control_we = csr_we_int & debug_mode_i)
-            'tdata2_write_mask': 0x00000000,     # D59: writable ONLY from Debug Mode (RTL: tmatch_value_we = csr_we_int & debug_mode_i)
+            'tdata1_write_mask': 0x00000000,     # writable ONLY from Debug Mode (RTL: tmatch_control_we = csr_we_int & debug_mode_i)
+            'tdata2_write_mask': 0x00000000,     # writable ONLY from Debug Mode (RTL: tmatch_value_we = csr_we_int & debug_mode_i)
             'tinfo_reset': 0x4,                  # bit[2] = mcontrol supported
             'num_mhpmcounters': num_mhpmcounters,
             'num_hpm_events': 16,
