@@ -74,7 +74,7 @@ pulp_iss_wrapper::pulp_iss_wrapper(vp::ComponentConf &config)
     traces.new_trace_event("pcer_insn_cont", &this->iss.timing.pcer_trace_event[30], 1);
 
     iss_decoder_item_t *isa = iss_isa_get(&this->iss);
-    int core_id = this->iss.csr.mhartid;
+    int core_id = this->iss.csr.mhartid.value;
     bool is_fc = core_id == 9;
 
     int fpu_base=0, fpu_div=1, int64=2;
