@@ -1,0 +1,20 @@
+CALIB_READ mcycle_w_r value=3
+CALIB_READ mcycle_w_nop4_r value=7
+CALIB_READ minstret_w_r value=0
+CALIB_READ minstret_w_nop4_r value=4
+CALIB_READ hpm_cycle_w_r value=3
+CALIB_READ hpm_cycle_w_nop4_r value=7
+CALIB_READ hpm_cycle_w_div_r value=35
+CALIB_READ hpm_cycle_instr_w_nop4_r value=7
+CALIB_READ hpm_instr_w_nop4_r value=4
+CALIB_READ hpm_cycle_w_r_r value=7
+CALIB_READ hpm_cycle_user_alias value=7
+CALIB_READ hpm_cycle_then_instr value=13
+CALIB_READ hpm_cycle_inhibit value=9
+CALIB_READ mcycle_inhibit value=8
+CALIB_READ minstret_inhibit value=2
+CALIB_HPM nop_cycles event=0x1 count=67
+CALIB_HPM branch_taken_cycles event=0x1 count=195
+CALIB_HPM lw_use_cycles event=0x1 count=99
+CALIB_HPM div_cycles event=0x1 count=515
+CALIB_HPM nop_cycle_instr event=0x3 count=67
