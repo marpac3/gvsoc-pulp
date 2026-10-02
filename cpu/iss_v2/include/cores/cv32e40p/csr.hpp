@@ -106,6 +106,10 @@ public:
      * the minstret line, which is low for ebreak (cv32e40p_id_stage.sv). */
     inline void hpm_commit(uint32_t events, bool count_instr);
 
+    /* Counts a stall cycle before an instruction (load-use, jump register,
+     * APU lines), in a cycle of its own as the RTL does. */
+    inline void hpm_stall_commit(uint32_t events);
+
     /* True while any implemented counter is enabled. The core then stays on
      * the full handlers, where the event lines fire (Cv32e40pExec). */
     inline bool hpm_counting();
@@ -170,6 +174,10 @@ public:
     Cv32e40pFpCsr fcsr_csr;
 
 private:
+    /* Advances each mhpmcounterN that selects one of events, unless
+     * inhibited or written by the retiring instruction. */
+    inline void hpm_count(uint32_t events, iss_reg_t inhibit, uint32_t counter_written,
+        uint32_t event_stale);
     // A CSR instruction on a removed address raises illegal-instruction.
     void remove_csr(iss_reg_t address);
     // Declares a register at an address of the generic register file.
@@ -210,12 +218,23 @@ private:
     bool mstatus_read_fixup(iss_insn_t *insn, bool is_write, iss_reg_t &value);
     bool mtvec_write_fixup(iss_insn_t *insn, bool is_write, iss_reg_t &value);
 
-    /* The 64-bit mcycle is the register pair while mcountinhibit.CY is set,
-     * and the clock plus an offset otherwise. */
+    /* 64-bit mcycle, from the register pair while mcountinhibit.CY is set
+     * and from the clock plus an offset otherwise. As in the RTL, a write
+     * takes effect at the end of the cycle of the writing instruction, so
+     * mcycle_set gives the count of the next cycle. */
     uint64_t mcycle_count();
     void mcycle_set(uint64_t count);
 
     int64_t mcycle_offset = 0;
+
+    /* A counter selecting the cycle line (mhpmevent bit 0) advances once per
+     * cycle and the other lines add nothing (cv32e40p_cs_registers.sv). The
+     * cycles since hpm_cycle_stamp are added when the counter, its selector
+     * or mcountinhibit is accessed. A write adds the cycle of the writing
+     * instruction too, under the old selectors and inhibit bits, except to
+     * the counter it writes (written, -1 for none). */
+    void hpm_cycle_fold(bool is_write = false, int written = -1);
+    int64_t hpm_cycle_stamp = 0;
 
     /* Flags set by a CSR write and cleared by hpm_commit at the retire of the
      * writing instruction. When minstret or minstreth is written, the write
@@ -278,18 +297,29 @@ inline void Cv32e40pCsr::hpm_commit(uint32_t events, bool count_instr)
 #endif
         }
     }
-    /* mhpmcounterN adds one per retire when its mhpmeventN selects a line
-     * that fired and its mcountinhibit bit is clear, unless the instruction
-     * wrote it. */
     uint32_t counter_written = this->mhpmcounter_written;
     uint32_t event_stale = this->mhpmevent_stale;
     this->mhpmcounter_written = 0;
     this->mhpmevent_stale = 0;
+    this->hpm_count(events, inhibit, counter_written, event_stale);
+}
+
+inline void Cv32e40pCsr::hpm_stall_commit(uint32_t events)
+{
+    // No CSR write takes effect in a stall cycle.
+    this->hpm_count(events, this->mcountinhibit.value, 0, 0);
+}
+
+inline void Cv32e40pCsr::hpm_count(uint32_t events, iss_reg_t inhibit, uint32_t counter_written,
+    uint32_t event_stale)
+{
+    /* A counter advances by 1 at most per cycle. A counter selecting the
+     * cycle line already advances every cycle (hpm_cycle_fold). */
     for (int i = 0; i < CONFIG_GVSOC_ISS_CV32E40P_NUM_MHPMCOUNTERS; i++)
     {
         iss_reg_t selected = ((event_stale >> i) & 1) ? this->mhpmevent_old[i]
                                                        : this->mhpmevent[i].value;
-        if ((selected & events) && !((counter_written >> i) & 1)
+        if ((selected & events) && !(selected & 0x1) && !((counter_written >> i) & 1)
             && !(inhibit & (1u << (3 + i))))
         {
             if (++this->mhpmcounter[i].value == 0)

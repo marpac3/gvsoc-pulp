@@ -470,6 +470,7 @@ void Cv32e40pCsr::reset(bool active)
         this->scratch1 = 0;
 
         this->mcycle_offset = 0;
+        this->hpm_cycle_stamp = this->iss.clock.get_cycles();
         this->minstret_written = false;
         this->mcountinhibit_stale = false;
 
@@ -633,6 +634,33 @@ uint64_t Cv32e40pCsr::mcycle_count()
     return (uint64_t)((int64_t)this->iss.clock.get_cycles() + this->mcycle_offset);
 }
 
+void Cv32e40pCsr::hpm_cycle_fold(bool is_write, int written)
+{
+    int64_t until = this->iss.clock.get_cycles() + (is_write ? 1 : 0);
+    if (until <= this->hpm_cycle_stamp)
+    {
+        return;
+    }
+    uint64_t cycles = (uint64_t)(until - this->hpm_cycle_stamp);
+    this->hpm_cycle_stamp = until;
+    for (int i = 0; i < CONFIG_GVSOC_ISS_CV32E40P_NUM_MHPMCOUNTERS; i++)
+    {
+        if ((this->mhpmevent[i].value & 0x1) && !(this->mcountinhibit.value & (1u << (3 + i))))
+        {
+            uint64_t add = cycles - (is_write && i == written ? 1 : 0);
+#if ISS_REG_WIDTH == 32
+            uint64_t count = ((uint64_t)this->mhpmcounterh[i].value << 32)
+                | this->mhpmcounter[i].value;
+            count += add;
+            this->mhpmcounter[i].value = (iss_reg_t)count;
+            this->mhpmcounterh[i].value = (iss_reg_t)(count >> 32);
+#else
+            this->mhpmcounter[i].value += add;
+#endif
+        }
+    }
+}
+
 void Cv32e40pCsr::mcycle_set(uint64_t count)
 {
     this->mcycle.value = (iss_reg_t)count;
@@ -641,7 +669,7 @@ void Cv32e40pCsr::mcycle_set(uint64_t count)
 #endif
     /* The offset is unused while CY is set. mcountinhibit_access computes it
      * again from the register pair when CY clears. */
-    this->mcycle_offset = (int64_t)count - (int64_t)this->iss.clock.get_cycles();
+    this->mcycle_offset = (int64_t)count - ((int64_t)this->iss.clock.get_cycles() + 1);
 }
 
 bool Cv32e40pCsr::mcycle_access(iss_insn_t *insn, bool is_write, iss_reg_t &value)
@@ -730,6 +758,7 @@ bool Cv32e40pCsr::instreth_alias_access(iss_insn_t *insn, bool is_write, iss_reg
 
 bool Cv32e40pCsr::hpm_alias_access(iss_insn_t *insn, bool is_write, iss_reg_t &value, int index)
 {
+    this->hpm_cycle_fold();
     value = this->mhpmcounter[index].value;
     return false;
 }
@@ -738,6 +767,7 @@ bool Cv32e40pCsr::mhpmcounter_access(iss_insn_t *insn, bool is_write, iss_reg_t 
 {
     /* A write to either half wins over the increment (hpm_commit). The
      * callback of mask_writes stores the value. */
+    this->hpm_cycle_fold(is_write, index);
     if (is_write)
     {
         this->mhpmcounter_written |= 1u << index;
@@ -751,6 +781,7 @@ bool Cv32e40pCsr::mhpmevent_access(iss_insn_t *insn, bool is_write, iss_reg_t &v
     // still counted with the old event selector, so save it here.
     if (is_write)
     {
+        this->hpm_cycle_fold(true);
         this->mhpmevent_old[index] = this->mhpmevent[index].value;
         this->mhpmevent_stale |= 1u << index;
     }
@@ -760,6 +791,7 @@ bool Cv32e40pCsr::mhpmevent_access(iss_insn_t *insn, bool is_write, iss_reg_t &v
 bool Cv32e40pCsr::hpmh_alias_access(iss_insn_t *insn, bool is_write, iss_reg_t &value, int index)
 {
 #if ISS_REG_WIDTH == 32
+    this->hpm_cycle_fold();
     value = this->mhpmcounterh[index].value;
 #endif
     return false;
@@ -774,16 +806,22 @@ bool Cv32e40pCsr::mcountinhibit_access(iss_insn_t *insn, bool is_write, iss_reg_
     {
         // The event lines fire from the full handlers only, as for the Ri5ky PCMR.
         this->iss.exec.switch_to_full_mode();
+        // The cycles so far count under the old inhibit bits.
+        this->hpm_cycle_fold(true);
         // The writing instruction counts under the old bits (hpm_commit).
         this->mcountinhibit_old = this->mcountinhibit.value;
         this->mcountinhibit_stale = true;
         bool old_cy = this->mcountinhibit.value & 0x1;
         bool new_cy = value & 0x1;
+        /* The cycle of the write counts under the old CY. When CY sets, the
+         * count freezes at its value of the next cycle. When CY clears, the
+         * count restarts from the cycle after the write. */
         if (old_cy != new_cy)
         {
             uint64_t count = this->mcycle_count();
             if (new_cy)
             {
+                count += 1;
                 this->mcycle.value = (iss_reg_t)count;
 #if ISS_REG_WIDTH == 32
                 this->mcycleh.value = (iss_reg_t)(count >> 32);
@@ -791,7 +829,7 @@ bool Cv32e40pCsr::mcountinhibit_access(iss_insn_t *insn, bool is_write, iss_reg_
             }
             else
             {
-                this->mcycle_offset = (int64_t)count - (int64_t)this->iss.clock.get_cycles();
+                this->mcycle_offset = (int64_t)count - ((int64_t)this->iss.clock.get_cycles() + 1);
             }
         }
     }
