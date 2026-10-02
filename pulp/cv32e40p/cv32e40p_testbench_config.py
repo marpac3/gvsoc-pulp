@@ -43,6 +43,14 @@ class Cv32e40pTestbenchConfig(Config):
         "RTL COREV_CLUSTER parameter (requires corev_pulp)"
     ))
 
+    fpu_addmul_lat: int = cfg_field(default=0, dump=True, desc=(
+        "RTL FPU_ADDMUL_LAT parameter (requires fpu)"
+    ))
+
+    fpu_others_lat: int = cfg_field(default=0, dump=True, desc=(
+        "RTL FPU_OTHERS_LAT parameter (requires fpu)"
+    ))
+
     num_mhpmcounters: int = cfg_field(default=1, dump=True, desc=(
         "RTL NUM_MHPMCOUNTERS parameter"
     ))
@@ -91,9 +99,13 @@ class Cv32e40pTestbenchConfig(Config):
         super().__post_init__()
         if self.zfinx and not self.fpu:
             raise ValueError('zfinx requires fpu')
+        if (self.fpu_addmul_lat or self.fpu_others_lat) and not self.fpu:
+            raise ValueError('fpu_addmul_lat and fpu_others_lat require fpu')
         isa = 'rv32imfc' if self.fpu else 'rv32imc'
         self.core = Cv32e40pConfig(isa=isa, zfinx=self.zfinx, corev_pulp=self.corev_pulp,
                                    corev_cluster=self.corev_cluster,
+                                   fpu_addmul_lat=self.fpu_addmul_lat,
+                                   fpu_others_lat=self.fpu_others_lat,
                                    num_mhpmcounters=self.num_mhpmcounters,
                                    boot_addr=self.boot_addr)
         # With init=False the bytes never written read 0, as in the UVM testbench,

@@ -41,10 +41,16 @@ inline bool Cv32e40pRegfile::scoreboard_insn_check(iss_insn_t *insn)
 {
     if (this->Regfile::scoreboard_insn_check(insn))
     {
+        this->iss.timing.dispatch_held(insn);
         return true;
     }
     // A debug entry moved the PC, so fetch again.
     if (this->iss.irq.dispatch_decide(insn))
+    {
+        return true;
+    }
+    // A pipeline stall of the instruction in ID.
+    if (this->iss.timing.dispatch_stall(insn))
     {
         return true;
     }

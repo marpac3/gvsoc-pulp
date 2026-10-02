@@ -21,6 +21,9 @@ public:
 
     inline bool can_switch_to_fast_mode();
 
+    // At the retire of an instruction, the stall cycles it adds behind itself.
+    inline int pending_stall_cycles() const { return this->stall_cycles; }
+
     // Co-simulation interface (cosim.hpp), inert until configured.
     Cv32e40pCosimModel *cosim = nullptr;
 };

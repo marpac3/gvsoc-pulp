@@ -25,6 +25,14 @@ class Cv32e40pConfig(RiscvConfig):
         "True if the core is built for a PULP cluster: cv.elw is implemented and a WFI "
         "never sleeps (RTL COREV_CLUSTER parameter, requires corev_pulp)"
     ))
+    fpu_addmul_lat: int = cfg_field(default=0, dump=True, desc=(
+        "Pipeline registers of the FPU addition and multiplication lanes "
+        "(RTL FPU_ADDMUL_LAT parameter)"
+    ))
+    fpu_others_lat: int = cfg_field(default=0, dump=True, desc=(
+        "Pipeline registers of the FPU comparison and conversion lanes "
+        "(RTL FPU_OTHERS_LAT parameter)"
+    ))
     num_mhpmcounters: int = cfg_field(default=1, dump=True, desc=(
         "Number of implemented mhpmcounter registers (RTL NUM_MHPMCOUNTERS parameter)"
     ))

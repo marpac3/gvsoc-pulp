@@ -41,6 +41,9 @@ void Cv32e40pException::raise(iss_reg_t pc, int id)
      * mode bits of mtvec (01) into the entry PC. */
     if (id != ISS_EXCEPT_DEBUG)
     {
+        iss_insn_t *insn = this->iss.insn_cache.get_insn(pc);
+        this->iss.exec.stall_cycles_inc(
+            Cv32e40pEvents::trap_entry_cycles(id, insn != NULL ? insn->opcode : 0));
         this->iss.exec.exception_pc &= ~(iss_reg_t)0x3;
         if (this->iss.exec.cosim->enabled())
         {

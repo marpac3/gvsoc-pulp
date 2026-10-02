@@ -196,7 +196,8 @@ The CV32E40P core with the memory map and the virtual peripherals of the
 core-v-verif CV32E40P UVM testbench, so that its test programs run unchanged.
 Binaries use the flat ``soc/binary`` prefix. The RTL parameters of the core
 are fields of the SoC configuration (``fpu``, ``zfinx``, ``corev_pulp``,
-``corev_cluster`` and ``num_mhpmcounters``), set with target qualifiers::
+``corev_cluster``, ``num_mhpmcounters``, and the FPU latencies
+``fpu_addmul_lat`` and ``fpu_others_lat``), set with target qualifiers::
 
     gvrun --target cv32e40p_testbench:config.soc/corev_pulp=true:config.soc/fpu=true --param soc/binary=<elf> run
 

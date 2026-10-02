@@ -65,6 +65,23 @@ def _apply_rtl_decode_fixes(isa: Isa) -> None:
             insn.add_tag('cv32e40p_fp_rm')
 
 
+def _apply_rtl_timing(isa: Isa) -> None:
+    """Set the fixed latencies of the RTL, in cycles after the one of the
+    instruction (Cv32e40pEvents::event_insn_latency_account).
+
+    mulh, mulhsu and mulhu take five cycles for the upper half
+    (cv32e40p_mult.sv, mulh_CS). The decoder handles fence as fence.i, and the
+    controller flushes the pipeline behind it (cv32e40p_controller.sv,
+    FLUSH_EX). The events slot charges the other costs
+    (cores/cv32e40p/events.hpp).
+    """
+    for insn in isa.get_insns():
+        if 'mulh' in insn.tags:
+            insn.set_latency(4)
+        elif insn.label in ('fence', 'fence.i'):
+            insn.set_latency(3)
+
+
 class Cv32e40pExec(ExecInOrder):
     """Execution loop. It stays on the full handlers while a counter is
     enabled, as Ri5kyExec does, and in co-simulation. It also hosts the
@@ -279,6 +296,7 @@ class Cv32e40p(RiscvCommon):
                 assert found == {'flw', 'fsw', 'fmv.x.s', 'fmv.s.x'}, found
 
             _apply_rtl_decode_fixes(isa_instance)
+            _apply_rtl_timing(isa_instance)
 
             # Inactive instructions never execute, and their handlers may be in
             # a subset header that this configuration does not include.
@@ -311,9 +329,11 @@ class Cv32e40p(RiscvCommon):
         super().__init__(parent, name, config=config, isa=isa_instance,
                          misa=misa, zfinx=zfinx, modules=modules,
                          debug_handler=config.debug_handler)
-        # Read by Cv32e40pException.
+        # Read by Cv32e40pException and Cv32e40pEvents.
         self.add_properties({
             'debug_exception_handler': config.debug_exception_handler,
+            'fpu_addmul_lat': config.fpu_addmul_lat,
+            'fpu_others_lat': config.fpu_others_lat,
             # Checked by cv32e40p_cosim_acquire_v1 before it casts the component.
             'cv32e40p_cosim': True,
         })
